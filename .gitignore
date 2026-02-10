@@ -1,0 +1,28 @@
+node_modules/
+
+# Environment files (keep out of repo)
+.env
+.env.local
+.env.*.local
+.env.example
+
+# Logs
+npm-debug.log*
+logs/
+*.log
+
+# OS
+.DS_Store
+
+# Coverage and build
+coverage/
+dist/
+build/
+
+# IDE/workspace
+.vscode/
+.idea/
+
+# Temporary/cache
+.cache/
+.tmp/
