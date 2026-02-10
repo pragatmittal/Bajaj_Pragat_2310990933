@@ -53,8 +53,9 @@ app.post('/bfhl', async (req, res) => {
     }
 
     const key = keys[0];
+    const keyLower = key.toLowerCase();
 
-    switch (key) {
+    switch (keyLower) {
       case 'fibonacci': {
         const n = body.fibonacci;
         if (!isInteger(n) || n < 0 || n > 1000) {
@@ -103,18 +104,19 @@ app.post('/bfhl', async (req, res) => {
         return res.status(200).json(successPayload(data));
       }
 
-      case 'AI': {
-        const q = body.AI;
+      case 'ai': {
+        const q = body[key];
         if (typeof q !== 'string' || !q.trim() || q.length > 2000) {
           return res.status(400).json(errorPayload('AI must be a non-empty question string (max 2000 chars)'));
         }
 
         // Quick deterministic shortcut for the common test question so
         // users can get the exact expected response without relying on
-        // external AI providers.
-        if (q.trim().toLowerCase() === 'what is the capital city of maharashtra?') {
-          return res.status(200).json(successPayload('Mumbai'));
-        }
+        // external AI providers. Normalize so variations (with/without "?",
+        // extra spaces) still return the correct single-word answer.
+          const normalized = q.trim().toLowerCase().replace(/\?+\.*$/, '').replace(/\s+/g, ' ').trim();
+          // NOTE: do not short-circuit AI requests here; forward all queries
+          // to the configured provider so responses come from Gemini.
 
         // Allow per-request override via headers so multiple API keys/URLs
         // can be tested without restarting the server. Headers should be
@@ -156,7 +158,10 @@ app.post('/bfhl', async (req, res) => {
           });
 
           if (!resp.ok) {
-            return res.status(502).json(errorPayload('AI provider returned an error'));
+              // capture provider body for debugging (do not log API keys)
+              const bodyText = await resp.text().catch(() => '<no body>');
+              console.error('AI provider returned non-OK', resp.status, bodyText);
+              return res.status(502).json(errorPayload(`AI provider returned status ${resp.status}: ${bodyText}`));
           }
 
           const json = await resp.json();
@@ -193,10 +198,6 @@ app.post('/bfhl', async (req, res) => {
     console.error(err);
     return res.status(500).json(errorPayload('Internal server error'));
   }
-});
-
-app.use((req, res) => {
-  res.status(404).json(errorPayload('Not Found'));
 });
 
 app.listen(PORT, () => {
